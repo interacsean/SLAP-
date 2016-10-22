@@ -1,0 +1,12 @@
+RewriteEngine on
+RewriteBase /
+
+php_flag display_startup_errors on
+php_flag display_errors on
+php_flag html_errors on
+
+RewriteCond %{REQUEST_FILENAME} !-f [OR]
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ajax/$ index.php?page=&ajax=1 [NC,L]
+RewriteRule ajax/([^.]+)$ index.php?page=$1&ajax=1 [NC,L]
+RewriteRule ^([^.]+)$ index.php?page=$1 [NC,L]

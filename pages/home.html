@@ -1,0 +1,10 @@
+<!-- field:preRender -->
+$replace['random-game'] = ['Twister', 'Connect 4', 'Russian Roulette'][rand(0,2)];
+
+<!-- end:preRender -->
+<!-- field:body -->
+<h3>Welcome.</h3>
+<p>We've got fun and games.</p>
+<p>Like <!-- var:random-game --></p>
+<a href="about" class='SLAP-link'>Go to about</a>
+<!-- end:body -->
