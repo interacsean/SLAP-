@@ -6,4 +6,4 @@ session_start();
 
 $SLAP_ = new SLAP_();
 
-print $SLAP_->do_page();
+print $SLAP_->slap_it();

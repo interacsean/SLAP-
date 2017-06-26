@@ -1,0 +1,4 @@
+.SLAP-menu>.selected, .SLAP-link.selected{
+	text-decoration: none;
+	color: black;
+}

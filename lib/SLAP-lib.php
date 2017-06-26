@@ -2,6 +2,13 @@
 
 class SLAP_ {
 
+    /**
+     * Return the page data that is stored in the relevant file in /pages/ 
+     *
+     * @param string      $p    Page name to get (matches file-name)
+     *
+     * @return array            Associative array with structured page information...
+     */
     function get_page($p){
 
         if (empty($p)) $p = HOME_PAGE;
@@ -9,86 +16,105 @@ class SLAP_ {
         // *** only [a-zA-z0-9_-] are allowed in filenames
         if (preg_match('/^[\w\-]+$/', $p) !== 1){
             http_response_code(403);
-            return array('body'=>'Invalid pagename');
+            return array('content'=>'Invalid page-name');
         }
 
         // *** check for attack OR file not found
         if (stripos($p, "http") !== false || stripos($p, '..') || !file_exists('../pages/'.$p.'.html')){
             http_response_code(404);
 
-            // * only return body of this file to prevent preRenders etc
+            // * only return content of this file to prevent preRenders etc
             return array(
-                'body'=> file_exists('../pages/404.html')
-                    ? file_get_contents('../pages/404.html')
-                    : 'Page not found'
+                'content'=> file_exists('../pages/404.html') ? 
+                    file_get_contents('../pages/404.html') :
+                    'Page not found'
             );
         }
 
         // *** Check that file permissions are reasonable (<755)
-        if (fileperms('../pages/'.$p.'.html') & 18){
+        if ( (!defined('IGNORE_FILE_PERMS') || IGNORE_FILE_PERMS === false ) && ( fileperms('../pages/'.$p.'.html') & 18 )){
             http_response_code(403);
-            return array('body'=>'Invalid permissions for page');
+            return array('content'=>'Invalid permissions for page');
         }
 
-        // *** We should be good to go
+        // *** We should be safe and good to go
         $page_raw = file_get_contents("../pages/".$p.".html");
-        $fields = array('body','head','preRender');
+        $fields = array('content','head','preRender', 'pageLoad');
         $page = array('name'=>$p);
+
         foreach($fields as $f){
+            // *** get everything between the template placeholders
             preg_match_all("/<!-- ?field:$f ?-->([\s\S]*?)<!-- ?end:$f ?-->/", $page_raw, $page_extract);
 
-            if (count($page_extract[0]) > 0){
+            if (count($page_extract) > 0 && count($page_extract[0]) > 0){
+                // *** there should only be one match for each placeholder... uses the first one.
                 $page[$f] = $page_extract[1][0];
             }
         }
 
-        // var_export($page);
         return $page;
     }
 
     /**
-    * TODO: rename this method
+    * Render the HTML for a given page, or the page parameter present in the query string
     *
-    * @param  String
-    * @return [type]       [description]
+    * @param  string    $pageName   Name of the page, if omitted, inspects the query string (this is the common behaviour)
+    * @return string                The HTML to render
     */
-    function do_page($pageName = null)
+    function slap_it($pageName = null)
     {
         $page = $this->get_page(
-            ( $pageName !== null   ?  $pageName :
-            ( isset($_GET['page']) ?  $_GET['page'] :
-                                      HOME_PAGE
-            ) )
+            ( $pageName !== null ?  
+                $pageName :
+                ( isset($_GET['page']) ?
+                    $_GET['page'] :
+                    HOME_PAGE
+                ) 
+            )
         );
+        if (!array_key_exists('content', $page)){
+            return false;
+        }
 
-        $inner_content = str_replace("<!-- BODY -->", $page['body'], file_get_contents('../templates/content.html'));
+        // *** optional additional wrapper template
+        $inner_content = file_exists('../templates/content.html') ?
+            str_replace("<!-- CONTENTINNER -->", $page['content'], file_get_contents('../templates/content.html')) :
+            $page['content'] ;
+        
+        // *** pre-render instructions from page
+        if ( array_key_exists('preRender', $page) && is_string($page['preRender']) && !empty($page['preRender']) ){
 
-        // ob_start();
-
-        // * pre-render instructions from page
-        if (!empty($page['preRender'])){
-
-            // yes you read it right... eval.  Power to the implementor!
+            // *** Yes you read it right... eval.  Full power to the implementor with this micro-framework!
             $replace = array();
             eval("function page_preRender(&\$replace){ ".$page['preRender']."}");
             page_preRender($replace);
-
-            // $inner_content = ob_get_contents().$inner_content;
-            // ob_clean();
 
             foreach($replace as $varName=>$code){
                 $inner_content = str_replace("<!-- var:$varName -->", $code, $inner_content);
             }
         }
 
-        // ** wrap if not ajax
+        // ** Technically the implementor could just whack a <script> tag at the end of their body...
+        if ( array_key_exists('pageLoad', $page) && is_string($page['pageLoad']) && !empty($page['pageLoad']) ){
+            $inner_content .= "<script id='SLAP-pageLoad-script'>\r\n".$page['pageLoad']."\r\n</script>";
+        }
+
+        // *** wrap into the page template if not an asyncronous / ajax request for the page
         if (!isset($_GET['ajax'])){
-            $content = str_replace("<!-- CONTENT -->", $inner_content, file_get_contents('../templates/page.html'));
 
-            // !* highlight menu item
-            // $content = preg_replace("/(<a href ?= ?['\"]\/".$page['name']."['\"])([^<]*)class[ ]?=[ ]?(['\"]))/i", "$1$2class=$3selected ", $content);
-            //$content = preg_replace("/(<a href ?= ?['\"]\/".$page['name']."['\"][^<]*)>/i", "$1 class='selected'", $content);
+            $content = str_replace("<!-- CONTENT -->", 
+                "<div id=\"SLAP-content\">\r\n".$inner_content."\r\n</div>", 
+                file_get_contents('../templates/page.html'));
 
+            // *** highlight currently selected menu item
+            $content = preg_replace("/(<a href ?= ?['\"]\/".$pageName."['\"])([^>]*)class ?= ?(['\"])/i", "$1$2class=$3selected ", $content);
+            // what if there is no 'class' attribute on the link element:
+            //$content = preg_replace("/(<a href ?= ?['\"]\/".$pageName."['\"][^>]*)>/i", "$1 class='selected'", $content);
+
+            if ( array_key_exists('head', $page) && is_string($page['head']) && !empty($page['head']) ){
+                $content = str_replace("<!-- HEAD -->", $page['head'], $content);
+            }
+            
         }else{
             $content = $inner_content;
 

@@ -5,9 +5,10 @@
     if (typeof selector === "undefined") selector = '.SLAP-menu a, a.SLAP-link'
 
     $(selector).click(function(){
-      $('.SLAP-menu a').removeClass('selected');
 
-      //!!! check all nav a's hrefs incase an in-line link should add the 'selected' class to the nav a
+      $('.SLAP-menu>a.selected, .SLAP-link.selected').removeClass('selected');
+
+      // TODO: check all nav a's hrefs incase an in-line link should add the 'selected' class to the nav a
 
       $(this).addClass('selected');
 
@@ -18,14 +19,22 @@
         .fadeOut(300, function(){
           // should do the ajax before the fading to save time
           $(this).html('<p class="loading"><img src="/images/loading.gif"/><br/>Loading...</p>')
-          .load(pageUrl, function(){
-            slap_links('#SLAP-content a.SLAP-link:not(.SLAP-link-procssed)');
-            $('#SLAP-content').fadeIn(300);
-          })
-        });;
+            .load(pageUrl, function(){
+
+              slap_links('#SLAP-content a.SLAP-link:not(.SLAP-link-procssed)');
+              $('#SLAP-content').fadeIn(300);
+
+              // ammend URL
+              if (window.history.pushState){
+                window.history.pushState('', pageUrl.replace('ajax',''), pageUrl.replace('ajax',''));
+              }
+
+            })
+        });
 
       // * set ajax fail
       return false;
+      
     }).addClass('SLAP-link-processed');
   }
 
