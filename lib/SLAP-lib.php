@@ -3,59 +3,6 @@
 class SLAP_ {
 
     /**
-     * Return the page data that is stored in the relevant file in /pages/ 
-     *
-     * @param string      $p    Page name to get (matches file-name)
-     *
-     * @return array            Associative array with structured page information...
-     */
-    function get_page($p){
-
-        if (empty($p)) $p = HOME_PAGE;
-
-        // *** only [a-zA-z0-9_-] are allowed in filenames
-        if (preg_match('/^[\w\-]+$/', $p) !== 1){
-            http_response_code(403);
-            return array('content'=>'Invalid page-name');
-        }
-
-        // *** check for attack OR file not found
-        if (stripos($p, "http") !== false || stripos($p, '..') || !file_exists('../pages/'.$p.'.html')){
-            http_response_code(404);
-
-            // * only return content of this file to prevent preRenders etc
-            return array(
-                'content'=> file_exists('../pages/404.html') ? 
-                    file_get_contents('../pages/404.html') :
-                    'Page not found'
-            );
-        }
-
-        // *** Check that file permissions are reasonable (<755)
-        if ( (!defined('IGNORE_FILE_PERMS') || IGNORE_FILE_PERMS === false ) && ( fileperms('../pages/'.$p.'.html') & 18 )){
-            http_response_code(403);
-            return array('content'=>'Invalid permissions for page');
-        }
-
-        // *** We should be safe and good to go
-        $page_raw = file_get_contents("../pages/".$p.".html");
-        $fields = array('content','head','preRender', 'pageLoad');
-        $page = array('name'=>$p);
-
-        foreach($fields as $f){
-            // *** get everything between the template placeholders
-            preg_match_all("/<!-- ?field:$f ?-->([\s\S]*?)<!-- ?end:$f ?-->/", $page_raw, $page_extract);
-
-            if (count($page_extract) > 0 && count($page_extract[0]) > 0){
-                // *** there should only be one match for each placeholder... uses the first one.
-                $page[$f] = $page_extract[1][0];
-            }
-        }
-
-        return $page;
-    }
-
-    /**
     * Render the HTML for a given page, or the page parameter present in the query string
     *
     * @param  string    $pageName   Name of the page, if omitted, inspects the query string (this is the common behaviour)
@@ -117,6 +64,59 @@ class SLAP_ {
         }
 
         return $content;
+    }
+
+    /**
+     * Return the page data that is stored in the relevant file in /pages/ 
+     *
+     * @param string      $p    Page name to get (matches file-name)
+     *
+     * @return array            Associative array with structured page information...
+     */
+    function get_page($p){
+
+        if (empty($p)) $p = HOME_PAGE;
+
+        // *** only [a-zA-z0-9_-] are allowed in filenames
+        if (preg_match('/^[\w\-]+$/', $p) !== 1){
+            http_response_code(403);
+            return array('content'=>'Invalid page-name');
+        }
+
+        // *** check for attack OR file not found
+        if (stripos($p, "http") !== false || stripos($p, '..') || !file_exists('../pages/'.$p.'.html')){
+            http_response_code(404);
+
+            // * only return content of this file to prevent preRenders etc
+            return array(
+                'content'=> file_exists('../pages/404.html') ? 
+                    file_get_contents('../pages/404.html') :
+                    'Page not found'
+            );
+        }
+
+        // *** Check that file permissions are reasonable (<755)
+        if ( (!defined('IGNORE_FILE_PERMS') || IGNORE_FILE_PERMS === false ) && ( fileperms('../pages/'.$p.'.html') & 18 )){
+            http_response_code(403);
+            return array('content'=>'Invalid permissions for page');
+        }
+
+        // *** We should be safe and good to go
+        $page_raw = file_get_contents("../pages/".$p.".html");
+        $fields = array('content','head','preRender', 'pageLoad');
+        $page = array('name'=>$p);
+
+        foreach($fields as $f){
+            // *** get everything between the template placeholders
+            preg_match_all("/<!-- ?field:$f ?-->([\s\S]*?)<!-- ?end:$f ?-->/", $page_raw, $page_extract);
+
+            if (count($page_extract) > 0 && count($page_extract[0]) > 0){
+                // *** there should only be one match for each placeholder... uses the first one.
+                $page[$f] = $page_extract[1][0];
+            }
+        }
+
+        return $page;
     }
 
 }
