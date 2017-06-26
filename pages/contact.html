@@ -1,54 +1,8 @@
-<!-- field:preRender -->
-
-include('model_site.php');
-include('view_forms.php');
-
-$formData = rsvp_getForm();
-$state = validate_form($_POST, $formData);
-
-$pattern = '/Content-Type:|Bcc:|Cc:/i';
-foreach($_POST as $subm)
-  if (preg_match($pattern, $subm)) {
-    die("We thought that might be spam.  Try again with less spamness?");
-    // reject the post, as it's most likely an attack
-  }
-
-// ** make action
-if ($state['result'] === FORMERROR_OK)
-  $submit_result = doFormSubmit($_POST, $formData);
-
-// ** display feedback or form
-if ($state['result'] === FORMERROR_OK && $submit_result === FORMERROR_OK){
-  $replace['form'] = getFormThankyou();
-}else{
-  $replace['form'] = getFormHTML($formData, $_POST, $state);
-}
-<!-- end:preRender -->
 <!-- field:content -->
-<h2>Contact</h2>
-<script type="text/javascript">
-  if (madformsRef == undefined){
-    var madformsRef=document.createElement("link")
-    madformsRef.setAttribute("rel", "stylesheet")
-    madformsRef.setAttribute("type", "text/css")
-    madformsRef.setAttribute("href", 'madforms.css')
-
-    if (typeof madformsRef!="undefined")
-      document.getElementsByTagName("head")[0].appendChild(madformsRef);
-  }
-
-  function submitViaAjax(form){
-    var sArray = $(form).serializeArray();
-    var dataObj = {};
-    for(var i in sArray)
-      dataObj[sArray[i]['name']] = sArray[i]['value'];
-    dataObj['Submit'] = 'RSVP';
-    $('#content').load('/ajax/contact', dataObj);//, $(form).serializeArray()
-    return false;
-  }
-</script>
-<p>You know where to find us...</p>
-<!-- placeholder:_DONT_USE_form -->
+<h2>Get in touch</h2>
+<p>You know where to find us</p>
+<p>[Also, check the console and you'll see the field:pageLoad token wrote to it]
 <!-- end:content -->
-<!-- field:head -->
-<!-- end:head -->
+<!-- field:pageLoad -->
+console.log('Loaded the contact page');
+<!-- end:pageLoad -->

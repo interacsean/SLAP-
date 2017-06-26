@@ -63,15 +63,10 @@ class SLAP_ {
     */
     function slap_it($pageName = null)
     {
-        $page = $this->get_page(
-            ( $pageName !== null ?  
-                $pageName :
-                ( isset($_GET['page']) ?
-                    $_GET['page'] :
-                    HOME_PAGE
-                ) 
-            )
-        );
+        if ($pageName === null && isset($_GET['page'])) $pageName = $_GET['page'];
+
+        $page = $this->get_page($pageName ? $pageName : HOME_PAGE);
+
         if (!array_key_exists('content', $page)){
             return false;
         }
@@ -108,8 +103,9 @@ class SLAP_ {
 
             // *** highlight currently selected menu item
             $content = preg_replace("/(<a href ?= ?['\"]\/".$pageName."['\"])([^>]*)class ?= ?(['\"])/i", "$1$2class=$3selected ", $content);
+
             // what if there is no 'class' attribute on the link element:
-            //$content = preg_replace("/(<a href ?= ?['\"]\/".$pageName."['\"][^>]*)>/i", "$1 class='selected'", $content);
+            $content = preg_replace("/(<a href ?= ?['\"]\/".$pageName."['\"]((?!class).)*?)>/i", "$1 class='selected'", $content);
 
             if ( array_key_exists('head', $page) && is_string($page['head']) && !empty($page['head']) ){
                 $content = str_replace("<!-- HEAD -->", $page['head'], $content);
